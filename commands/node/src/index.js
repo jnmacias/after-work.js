@@ -39,25 +39,23 @@ class Runner extends EventEmitter {
     if (this.debugging) {
       return this;
     }
-    console.log(mode);
-    console.log('  test');
-    testFiles.forEach((f) => {
-      console.log(`    \u001b[90m${f}\u001b[0m`);
-    });
-    console.log('  src');
-    srcFiles.forEach((f) => {
-      console.log(`    \u001b[90m${f}\u001b[0m`);
-    });
-    console.log('\nSave\u001b[90m a test file or source file to run only affected tests\u001b[0m');
-    console.log('\u001b[90mPress\u001b[0m a \u001b[90mto run all tests\u001b[0m');
+    // console.log(mode);
+    // console.log('  test');
+    // testFiles.forEach((f) => {
+    //   console.log(`    \u001b[90m${f}\u001b[0m`);
+    // });
+    // console.log('  src');
+    // srcFiles.forEach((f) => {
+    //   console.log(`    \u001b[90m${f}\u001b[0m`);
+    // });
+    // console.log('\nSave\u001b[90m a test file or source file to run only affected tests\u001b[0m');
+    // console.log('\u001b[90mPress\u001b[0m a \u001b[90mto run all tests\u001b[0m');
+    utils.log('testing', testFiles, srcFiles)
     return this;
   }
 
-  logLine(msg) {
-    if (this.argv.outputReporterOnly) {
-      return;
-    }
-    utils.writeLine(msg);
+  logLine(prefix, msg) {
+    utils.writeLine(prefix, msg);
   }
 
   logClearLine() {
@@ -210,8 +208,8 @@ class Runner extends EventEmitter {
         if (!this.nyc.exclude.shouldInstrument(f)) {
           return;
         }
-        this.logLine(`Loading ${f}`);
-        require(`${f}`);
+        this.logLine('Loading', f);
+        require(f);
       });
     }
     return this;
@@ -225,7 +223,7 @@ class Runner extends EventEmitter {
     }
     this.mocha = new this.libs.Mocha(this.argv.mocha);
     this.mocha.suite.on('pre-require', (_, file) => {
-      this.logLine(`Loading ${file}`);
+      this.logLine('Loading', file);
     });
     this.nyc = new this.libs.NYC(this.argv.nyc);
     this.argv.instrument = {

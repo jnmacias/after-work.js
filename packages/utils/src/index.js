@@ -3,8 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const importCwd = require('import-cwd');
-
-const isCI = !!process.env.CI;
+const debug = require('debug');
 
 const utils = {
   isSourceMap(f) {
@@ -33,18 +32,12 @@ const utils = {
     return js;
   },
   clearLine() {
-    if (isCI) {
-      return;
-    }
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0, null);
+    readline.clearLine(process.stderr, 0);
+    readline.cursorTo(process.stderr, 0, null);
   },
-  writeLine(msg) {
-    if (isCI) {
-      return;
-    }
+  writeLine(prefix, msg) {
     this.clearLine();
-    process.stdout.write(`${msg}`);
+    process.stderr.write(`${prefix} ...${msg.slice(-59)}`);
   },
   safeGetModule(name) {
     let found = importCwd.silent(name);
@@ -151,6 +144,9 @@ const utils = {
     };
     walk(deps, files, file);
     return all;
+  },
+  debug(ns) {
+    return debug(ns);
   },
 };
 
