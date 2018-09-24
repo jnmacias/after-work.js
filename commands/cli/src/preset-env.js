@@ -1,5 +1,6 @@
 const screenshotPlugin = require('@after-work.js/chai-plugin-screenshot');
 const snapshotPlugin = require('@after-work.js/chai-plugin-snapshot');
+const interactivePlugin = require('@after-work.js/interactive-plugin');
 const sinon = require('sinon');
 const chai = require('chai');
 const sinonChai = require('sinon-chai');
@@ -17,5 +18,6 @@ module.exports = (runner) => {
   chai.Assertion.addMethod('matchImageOf', screenshotPlugin.matchImageOf);
   if (runner) {
     chai.Assertion.addMethod('toMatchSnapshot', snapshotPlugin(runner));
+    interactivePlugin(runner);
   }
 };

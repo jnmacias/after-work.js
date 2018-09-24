@@ -1,5 +1,4 @@
 const EventEmitter = require('events');
-const readline = require('readline');
 const globby = require('globby');
 const Mocha = require('mocha');
 const chokidar = require('chokidar');
@@ -33,6 +32,8 @@ class Runner extends EventEmitter {
     this.libs = libs;
     this.debugging = false;
     this.snapshotStates = new Map();
+    this.isWatching = false;
+    this.bindWatch();
   }
 
   log(mode, testFiles, srcFiles) {
@@ -50,19 +51,12 @@ class Runner extends EventEmitter {
     // });
     // console.log('\nSave\u001b[90m a test file or source file to run only affected tests\u001b[0m');
     // console.log('\u001b[90mPress\u001b[0m a \u001b[90mto run all tests\u001b[0m');
-    utils.log('testing', testFiles, srcFiles)
+    // utils.log('testing', testFiles, srcFiles)
     return this;
   }
 
   logLine(prefix, msg) {
     utils.writeLine(prefix, msg);
-  }
-
-  logClearLine() {
-    if (this.argv.outputReporterOnly) {
-      return;
-    }
-    utils.clearLine();
   }
 
   safeDeleteCache(f) {
@@ -96,17 +90,21 @@ class Runner extends EventEmitter {
     this.onlySrcFiles = [srcFile];
   }
 
-  setTestFiles() {
-    this.testFiles = globby.sync(this.argv.glob).map(f => path.resolve(f));
+  setTestFiles(t) {
+    const test = t || this.argv.glob;
+    this.testFiles = globby.sync(test).map(f => path.resolve(f));
     if (!this.testFiles.length) {
-      console.log('No files found for:', this.argv.glob);
-      this.exit(1);
+      console.error('No files found for:', test);
+      if (!this.argv.interactive) {
+        this.exit(1);
+      }
+      this.emit('interactive');
     }
     return this;
   }
 
-  setSrcFiles() {
-    this.srcFiles = globby.sync(this.argv.src).map(f => path.resolve(f));
+  setSrcFiles(src) {
+    this.srcFiles = globby.sync(src || this.argv.src).map(f => path.resolve(f));
     return this;
   }
 
@@ -140,47 +138,15 @@ class Runner extends EventEmitter {
       this.nyc.report();
     }
     if (this.argv.watch) {
-      const mode = this.all ? 'All' : 'Only';
-      const testFiles = this.all ? [`${this.argv.glob}`] : this.onlyTestFiles;
-      const srcFiles = this.all ? [`${this.argv.src}`] : this.onlySrcFiles;
-      this.log(mode, testFiles, srcFiles);
+      this.emit('watchEnd');
     }
   }
 
   runTests() {
     this.isRunning = true;
     this.mochaRunner = this.mocha.run(failures => this.onFinished(failures));
-    this.mochaRunner.once('start', () => this.logClearLine());
+    this.mochaRunner.once('start', () => utils.clearLine());
     this.mochaRunner.once('end', () => this.onEnd());
-  }
-
-  setupKeyPress() {
-    if (!this.argv.watch) {
-      return this;
-    }
-    if (typeof process.stdin.setRawMode !== 'function') {
-      return this;
-    }
-    readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('keypress', (str) => {
-      if (str === '\u0003') {
-        this.emit('forceExit');
-        process.exit(0);
-      }
-      if (this.isRunning) {
-        return;
-      }
-      switch (str) {
-        case 'a':
-          this.all = true;
-          this.setupAndRunTests(this.testFiles, this.srcFiles);
-          break;
-        default: break;
-      }
-    });
-    return this;
   }
 
   register() {
@@ -236,8 +202,9 @@ class Runner extends EventEmitter {
         .runTests();
     } catch (err) {
       this.isRunning = false;
-      console.log(err);
+      console.error(err);
       if (this.argv.watch) {
+        this.emit('interactive');
         return;
       }
       this.exit(1);
@@ -285,14 +252,18 @@ class Runner extends EventEmitter {
     this.setupAndRunTests(this.onlyTestFiles, this.onlySrcFiles);
   }
 
-  run() {
-    this.setupAndRunTests(this.testFiles, this.srcFiles);
+  bindWatch() {
     if (this.argv.watch) {
       this.libs.chokidar.watch(this.argv.watchGlob, { ignoreInitial: true })
         .on('change', f => this.onWatch(path.resolve(f)))
         .on('add', f => this.onWatchAdd(path.resolve(f)))
         .on('unlink', f => this.onWatchUnlink(path.resolve(f)));
+      this.isWatching = true;
     }
+  }
+
+  run() {
+    this.setupAndRunTests(this.testFiles, this.srcFiles);
   }
 
   autoDetectDebug() {
@@ -352,11 +323,14 @@ const node = {
     }
     runner
       .autoDetectDebug()
-      .setupKeyPress()
       .setTestFiles()
       .setSrcFiles()
-      .require()
-      .run();
+      .require();
+    if (argv.interactive) {
+      runner.emit('interactive');
+      return runner;
+    }
+    runner.run();
     return runner;
   },
 };

@@ -248,22 +248,18 @@ describe('Node command', () => {
     it('should call the runner functions', () => {
       const origRunner = cmd.Runner;
       const autoDetectDebug = sandbox.stub().returnsThis();
-      const setupKeyPress = sandbox.stub().returnsThis();
       const setTestFiles = sandbox.stub().returnsThis();
       const setSrcFiles = sandbox.stub().returnsThis();
       const req = sandbox.stub().returnsThis();
       const run = sandbox.stub().returnsThis();
       class Dummy { }
       Dummy.prototype.autoDetectDebug = autoDetectDebug;
-      Dummy.prototype.setupKeyPress = setupKeyPress;
       Dummy.prototype.setTestFiles = setTestFiles;
       Dummy.prototype.setSrcFiles = setSrcFiles;
       Dummy.prototype.require = req;
       Dummy.prototype.run = run;
       cmd.Runner = Dummy;
       handler({ mocha: {} });
-      expect(autoDetectDebug).to.have.been.calledImmediatelyBefore(setupKeyPress);
-      expect(setupKeyPress).to.have.been.calledImmediatelyBefore(setTestFiles);
       expect(setTestFiles).to.have.been.calledImmediatelyBefore(setSrcFiles);
       expect(setTestFiles).to.have.been.calledImmediatelyBefore(setSrcFiles);
       expect(req).to.have.been.calledImmediatelyBefore(run);

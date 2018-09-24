@@ -149,4 +149,10 @@ module.exports = {
     default: 'coverage',
     type: 'string',
   },
+  interactive: {
+    description: 'Run in interactive mode',
+    default: false,
+    type: 'boolean',
+    alias: 'i',
+  },
 };
